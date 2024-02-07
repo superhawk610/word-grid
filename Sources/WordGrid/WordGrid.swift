@@ -67,11 +67,11 @@ public struct IterationOrder {
     }
 }
 
-struct Placement {
-    let score: Int
-    let locks: Set<Location>
-    let start: Location
-    let order: IterationOrder
+public struct Placement {
+    public let score: Int
+    public let locks: Set<Location>
+    public let start: Location
+    public let order: IterationOrder
 }
 
 func rad2deg(_ n: Double) -> Double {
@@ -86,8 +86,8 @@ public final class WordGrid {
         return grid
     }
 
-    static let fillLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    static let emptyCell: Character = "·"
+    public static let fillLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    public static let emptyCell: Character = "·"
 
     // how many placement candidates to check before moving to the next word
     static let maxCandidates = 50
@@ -109,7 +109,7 @@ public final class WordGrid {
     // to prevent placing words on top of others (that don't match)
     private var locked: Set<Location> = Set()
 
-    init(rows: Int, cols: Int) {
+    public init(rows: Int, cols: Int) {
         self.rows = rows
         self.cols = cols
         self.letters = (0..<rows * cols).map { _ in WordGrid.emptyCell }.chunked(into: rows)
@@ -132,7 +132,9 @@ public final class WordGrid {
     }
 
     // place the given words and fill the remaining cells with random letters
-    public func fill(with words: [String]) {
+    public func fill(with words: [String],
+        fillLetters: any Sequence<Character> = WordGrid.fillLetters,
+        onPlacementCandidateFound: (String, Placement) throws -> Void = { _, _ in }) {
         var unplaced: [String] = []
 
         // place words (longest first, since they're the hardest to fit)
@@ -150,6 +152,7 @@ public final class WordGrid {
                             let loc = Location(row: row, col: col)
                             if fits(word, loc: loc, angle: angle) {
                                 if let placement = tryPlace(word, start: loc, order: IterationOrder(angle)) {
+                                    _ = try? onPlacementCandidateFound(word, placement)
                                     candidates.append(placement)
                                     if placement.score == WordGrid.idealScore || candidates.count > WordGrid.maxCandidates {
                                         break search
@@ -171,10 +174,11 @@ public final class WordGrid {
         }
 
         // fill in the remaining empty cells with random letters
+        let fillLetters = Array(fillLetters)
         for row in 0..<rows {
             for col in 0..<cols {
                 if self[row, col] == WordGrid.emptyCell {
-                    self[row, col] = WordGrid.fillLetters.randomElement()!
+                    self[row, col] = fillLetters.randomElement()!
                 }
             }
         }
@@ -232,7 +236,7 @@ public final class WordGrid {
         return Placement(score: score, locks: locked, start: start, order: order)
     }
 
-    private func place(_ word: String, _ placement: Placement) {
+    public func place(_ word: String, _ placement: Placement) {
         // register our locks
         self.locked.formUnion(placement.locks)
 
